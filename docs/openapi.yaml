@@ -1,0 +1,1042 @@
+# OpenAPI 3.1 specification for the e‑commerce platform
+openapi: 3.1.0
+info:
+  title: E‑Commerce API
+  version: 1.0.0
+  description: |
+    واجهة RESTful للمتجر الإلكتروني وفق مواصفات OpenAPI 3.1. هذه الواجهة تغطي جميع المسارات
+    المعرّفة في `/api/v1`. تدعم الاستجابة بنسق JSON وتستخدم JWT للمصادقة.
+servers:
+  - url: https://{host}/api/v1
+    description: السيرفر الرئيسي
+    variables:
+      host:
+        default: example.com
+        description: اسم المضيف
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: رقم الصفحة
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: pageSize
+      in: query
+      description: عدد العناصر في الصفحة
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: string
+      required: [error]
+    AuthRegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        fullName:
+          type: string
+        phone:
+          type: string
+      required: [email, password, fullName]
+    AuthLoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required: [email, password]
+    AuthTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: مدة انتهاء صلاحية access token بالثواني
+      required: [accessToken, refreshToken, expiresIn]
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        parentId: { type: integer, nullable: true }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        imageUrl: { type: string, format: uri, nullable: true }
+      required: [id, name, slug]
+    ProductVariantAttribute:
+      type: object
+      properties:
+        attributeId: { type: integer }
+        valueId: { type: integer }
+        name: { type: string }
+        value: { type: string }
+      required: [attributeId, valueId, name, value]
+    ProductVariant:
+      type: object
+      properties:
+        id: { type: integer }
+        sku: { type: string }
+        price: { type: number }
+        discountedPrice: { type: number, nullable: true }
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariantAttribute'
+      required: [id, sku, price, attributes]
+    Product:
+      type: object
+      properties:
+        id: { type: integer }
+        categoryId: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        price: { type: number }
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+      required: [id, categoryId, name, slug, price]
+    PaginationResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/Product'
+              - $ref: '#/components/schemas/Category'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+      required: [items, page, pageSize, totalItems, totalPages]
+    CartItem:
+      type: object
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        variantId: { type: integer, nullable: true }
+        quantity: { type: integer }
+        unitPrice: { type: number }
+      required: [id, productId, quantity, unitPrice]
+    Cart:
+      type: object
+      properties:
+        id: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total:
+          type: number
+      required: [id, items, total]
+    CheckoutSummaryRequest:
+      type: object
+      properties:
+        shippingAddressId: { type: integer }
+        couponCode: { type: string, nullable: true }
+      required: [shippingAddressId]
+    CheckoutSummaryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        shippingCost:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+      required: [items, shippingCost, discount, total]
+    Order:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        total:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, status, items, total, createdAt]
+    PaymentIntentRequest:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [cod, zaincash, asiahawala]
+        orderId:
+          type: integer
+      required: [provider, orderId]
+    PaymentStatus:
+      type: object
+      properties:
+        id: { type: integer }
+        status:
+          type: string
+          enum: [pending, authorized, paid, failed, refunded]
+        amount:
+          type: number
+        provider:
+          type: string
+      required: [id, status, amount, provider]
+    ShippingRate:
+      type: object
+      properties:
+        cityId: { type: integer }
+        weight: { type: number }
+        cost: { type: number }
+      required: [cityId, weight, cost]
+    Review:
+      type: object
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, productId, rating, comment, createdAt]
+  responses:
+    UnauthorizedError:
+      description: المصادقة مطلوبة أو غير صالحة
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: AUTH_ERROR
+              message: "يتطلب رمز JWT صالح"
+
+paths:
+  /auth/register:
+    post:
+      summary: تسجيل مستخدم جديد
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterRequest'
+      responses:
+        '201':
+          description: تسجيل ناجح
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '400':
+          description: خطأ في المدخلات
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/login:
+    post:
+      summary: تسجيل الدخول
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: تسجيل دخول ناجح
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /auth/refresh:
+    post:
+      summary: تحديث توكن
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required: [refreshToken]
+      responses:
+        '200':
+          description: توكن محدث
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /auth/logout:
+    post:
+      summary: تسجيل الخروج
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: تم تسجيل الخروج بدون محتوى
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /categories:
+    get:
+      summary: الحصول على قائمة الفئات
+      tags: [Catalog]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: قائمة الفئات
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginationResponse'
+    post:
+      summary: إنشاء فئة جديدة
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Category'
+      responses:
+        '201':
+          description: تم إنشاء الفئة
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /categories/{id}:
+    get:
+      summary: الحصول على فئة واحدة
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: بيانات الفئة
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          description: فئة غير موجودة
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: تعديل الفئة
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Category'
+      responses:
+        '200':
+          description: تم التعديل
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: غير موجود
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: حذف فئة
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: تم الحذف } 
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: غير موجود
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /products:
+    get:
+      summary: الحصول على قائمة المنتجات مع فلاتر وفرز
+      tags: [Catalog]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: search
+          in: query
+          description: نص البحث عن المنتج
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: sort
+          in: query
+          description: ترتيب النتائج (مثلاً: price-asc, price-desc)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: قائمة المنتجات
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginationResponse'
+    post:
+      summary: إنشاء منتج جديد
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+      responses:
+        '201':
+          description: تم إنشاء المنتج
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /products/{id}:
+    get:
+      summary: الحصول على منتج معين
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: تفاصيل المنتج
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: غير موجود
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: تعديل المنتج
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+      responses:
+        '200': { description: تم التعديل, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    delete:
+      summary: حذف المنتج
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '204': { description: تم الحذف }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+  /products/{id}/related:
+    get:
+      summary: الحصول على منتجات مشابهة
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: قائمة المنتجات المشابهة
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginationResponse'
+        '404':
+          description: منتج غير موجود
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search/suggest:
+    get:
+      summary: اقتراحات البحث
+      tags: [Catalog]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: قائمة الاقتراحات
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /cart:
+    get:
+      summary: الحصول على السلة الحالية
+      tags: [Cart]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: تفاصيل السلة
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+  /cart/items:
+    post:
+      summary: إضافة عنصر للسلة
+      tags: [Cart]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId: { type: integer }
+                variantId: { type: integer, nullable: true }
+                quantity: { type: integer }
+              required: [productId, quantity]
+      responses:
+        '201': { description: تمت الإضافة, content: { application/json: { schema: { $ref: '#/components/schemas/Cart' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+  /cart/items/{itemId}:
+    patch:
+      summary: تعديل عنصر في السلة
+      tags: [Cart]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity: { type: integer }
+      responses:
+        '200': { description: تم التعديل, content: { application/json: { schema: { $ref: '#/components/schemas/Cart' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+    delete:
+      summary: حذف عنصر من السلة
+      tags: [Cart]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: تم الحذف }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+
+  /checkout/summary:
+    post:
+      summary: حساب ملخص الطلب قبل التأكيد
+      tags: [Checkout]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutSummaryRequest'
+      responses:
+        '200':
+          description: ملخص الطلب
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutSummaryResponse'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+  /checkout/confirm:
+    post:
+      summary: تأكيد الطلب (إنشاء order)
+      tags: [Checkout]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shippingAddressId: { type: integer }
+                couponCode: { type: string, nullable: true }
+                paymentProvider:
+                  type: string
+                  enum: [cod, zaincash, asiahawala]
+              required: [shippingAddressId, paymentProvider]
+      responses:
+        '201':
+          description: تم إنشاء الطلب
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+
+  /orders:
+    get:
+      summary: الحصول على قائمة الطلبات (إما جميع الطلبات أو الخاصة بالمستخدم إذا mine=1)
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: mine
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: قائمة الطلبات
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+    post:
+      summary: إنشاء طلب جديد (استخدام checkout/confirm)
+      tags: [Orders]
+      description: يوصى باستخدام `/checkout/confirm` لإنشاء طلب، لذا يُترك هذا المسار فارغًا.
+      deprecated: true
+      responses:
+        '405': { description: غير مدعوم }
+
+  /orders/{orderId}:
+    get:
+      summary: الحصول على تفاصيل الطلب
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: تفاصيل الطلب
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: غير موجود
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      summary: إلغاء الطلب
+      operationId: cancelOrder
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      description: يلغي الطلب إذا كان في حالة معينة مثل Pending أو Processing
+      responses:
+        '200': { description: تم الإلغاء, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '400': { description: لا يمكن إلغاء الطلب, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    patch:
+      summary: طلب إرجاع
+      operationId: returnOrder
+      tags: [Orders]
+      security:
+        - BearerAuth: []
+      description: إرسال طلب لإرجاع الطلب خلال فترة الإرجاع.
+      responses:
+        '200': { description: تم تسجيل الطلب للإرجاع, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '400': { description: لا يمكن الإرجاع, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+  /payments/intent:
+    post:
+      summary: إنشاء طلب دفع (Payment Intent)
+      tags: [Payments]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentIntentRequest'
+      responses:
+        '201':
+          description: تم إنشاء Payment Intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatus'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+  /payments/{id}/confirm:
+    post:
+      summary: تأكيد الدفع (خاصة للمدفوعات غير COD)
+      tags: [Payments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: تم التأكيد, content: { application/json: { schema: { $ref: '#/components/schemas/PaymentStatus' } } } }
+        '400': { description: خطأ, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /payments/{id}/status:
+    get:
+      summary: الاستعلام عن حالة الدفع
+      tags: [Payments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: حالة الدفع, content: { application/json: { schema: { $ref: '#/components/schemas/PaymentStatus' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /webhooks/zaincash:
+    post:
+      summary: Webhook ZainCash
+      tags: [Payments]
+      description: يستقبل إخطارات من بوابة زين كاش للتحقق من حالة الدفع.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: استلمت webhook }
+  /webhooks/asiahawala:
+    post:
+      summary: Webhook AsiaHawala
+      tags: [Payments]
+      description: يستقبل إخطارات من بوابة آسيـا حوالة.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: استلمت webhook }
+
+  /shipping/rates:
+    get:
+      summary: حساب تكلفة الشحن
+      tags: [Shipping]
+      parameters:
+        - name: cityId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: weight
+          in: query
+          required: true
+          schema: { type: number }
+      responses:
+        '200': { description: تكلفة الشحن, content: { application/json: { schema: { $ref: '#/components/schemas/ShippingRate' } } } }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+  /shipments/{id}/tracking:
+    get:
+      summary: تتبع الشحنة
+      tags: [Shipping]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: تفاصيل التتبع, content: { application/json: { schema: { type: object } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+  /products/{id}/reviews:
+    post:
+      summary: إضافة مراجعة للمنتج
+      tags: [Reviews]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+              required: [rating, comment]
+      responses:
+        '201': { description: تم إنشاء المراجعة, content: { application/json: { schema: { $ref: '#/components/schemas/Review' } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: منتج غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    get:
+      summary: الحصول على مراجعات المنتج
+      tags: [Reviews]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: قائمة المراجعات, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Review' } } } } }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+  /wishlist:
+    get:
+      summary: الحصول على قائمة الأمنيات
+      tags: [Wishlist]
+      security:
+        - BearerAuth: []
+      responses:
+        '200': { description: العناصر في قائمة الأمنيات, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Product' } } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+  /wishlist/{productId}:
+    post:
+      summary: إضافة منتج إلى قائمة الأمنيات
+      tags: [Wishlist]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '201': { description: تمت الإضافة, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Product' } } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: منتج غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    delete:
+      summary: حذف منتج من قائمة الأمنيات
+      tags: [Wishlist]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: تم الحذف }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+  # المسارات الخاصة بالإدارة (أمثلة مختصرة)
+  /admin/users:
+    get:
+      summary: الحصول على جميع المستخدمين
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200': { description: قائمة المستخدمين, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+
+  /admin/roles:
+    get:
+      summary: الحصول على الأدوار
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200': { description: قائمة الأدوار, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+    post:
+      summary: إنشاء دور جديد
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                permissions:
+                  type: array
+                  items: { type: integer }
+              required: [name]
+      responses:
+        '201': { description: تم الإنشاء, content: { application/json: { schema: { type: object } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+
+  /admin/roles/{roleId}/permissions:
+    patch:
+      summary: تعديل صلاحيات دور
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                add:
+                  type: array
+                  items: { type: integer }
+                remove:
+                  type: array
+                  items: { type: integer }
+      responses:
+        '200': { description: تم التعديل, content: { application/json: { schema: { type: object } } } }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { description: غير موجود, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
+security:
+  - BearerAuth: []

@@ -1,0 +1,76 @@
+version: '3.8'
+services:
+  api:
+    image: your-registry/ecommerce-api:latest
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      DB__CONN: Host=db;Port=5432;Database=ecommerce;Username=postgres;Password=${POSTGRES_PASSWORD}
+      REDIS__CONN: redis:6379
+      MINIO__ENDPOINT: http://minio:9000
+      MINIO__KEY: ${MINIO_ROOT_USER}
+      MINIO__SECRET: ${MINIO_ROOT_PASSWORD}
+      MEILI__HOST: http://meili:7700
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - db
+      - redis
+      - minio
+      - meili
+  storefront:
+    image: your-registry/ecommerce-storefront:latest
+    environment:
+      NEXT_PUBLIC_API_BASE: https://yourdomain.com/api/v1
+    depends_on:
+      - api
+  admin:
+    image: your-registry/ecommerce-admin:latest
+    environment:
+      NEXT_PUBLIC_API_BASE: https://yourdomain.com/api/v1
+    depends_on:
+      - api
+  proxy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - api
+      - storefront
+      - admin
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ecommerce
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  redis:
+    image: redis:7
+    restart: always
+    volumes:
+      - redis-data:/data
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+  meili:
+    image: getmeili/meilisearch:latest
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+    volumes:
+      - meili-data:/meili_data
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  meili-data:
+  caddy-data:
