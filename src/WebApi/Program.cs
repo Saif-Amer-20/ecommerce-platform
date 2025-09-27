@@ -220,7 +220,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3001", "http://localhost:3100") // Storefront & Admin
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3100") // Storefront & Admin
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -228,6 +228,46 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Seed sample data for demo purposes
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var catalogService = scope.ServiceProvider.GetRequiredService<ICatalogService>();
+    
+    // Add sample categories
+    if (!dbContext.Categories.Any())
+    {
+        var categories = new[]
+        {
+            new Category { Name = "الإلكترونيات", Slug = "electronics", Description = "أجهزة ذكية وإلكترونيات حديثة" },
+            new Category { Name = "الأزياء والملابس", Slug = "fashion", Description = "أحدث صيحات الموضة والملابس" },
+            new Category { Name = "المنزل والحديقة", Slug = "home-garden", Description = "مستلزمات المنزل وأدوات الحديقة" },
+            new Category { Name = "الرياضة واللياقة", Slug = "sports", Description = "معدات رياضية وأدوات اللياقة البدنية" },
+            new Category { Name = "الجمال والصحة", Slug = "beauty-health", Description = "منتجات العناية بالجمال والصحة" },
+            new Category { Name = "الكتب والثقافة", Slug = "books", Description = "كتب ومواد تعليمية وثقافية" }
+        };
+        
+        dbContext.Categories.AddRange(categories);
+        dbContext.SaveChanges();
+        
+        // Add sample products
+        var products = new[]
+        {
+            new Product { Name = "هاتف ذكي Samsung Galaxy", Slug = "samsung-galaxy", Price = 450000, Description = "هاتف ذكي متطور مع كاميرا عالية الجودة", SKU = "SAM001", CategoryId = 1, IsActive = true },
+            new Product { Name = "قميص قطني رجالي", Slug = "cotton-shirt", Price = 35000, Description = "قميص قطني عالي الجودة ومريح", SKU = "SHIRT001", CategoryId = 2, IsActive = true },
+            new Product { Name = "مجموعة أواني طبخ", Slug = "cooking-set", Price = 125000, Description = "مجموعة كاملة من أواني الطبخ المقاومة للصدأ", SKU = "COOK001", CategoryId = 3, IsActive = true },
+            new Product { Name = "حذاء رياضي Nike", Slug = "nike-shoes", Price = 180000, Description = "حذاء رياضي مريح ومناسب للجري", SKU = "NIKE001", CategoryId = 4, IsActive = true },
+            new Product { Name = "كريم للوجه", Slug = "face-cream", Price = 45000, Description = "كريم مرطب للوجه للبشرة الحساسة", SKU = "CREAM001", CategoryId = 5, IsActive = true },
+            new Product { Name = "كتاب الأدب العربي", Slug = "arabic-literature", Price = 25000, Description = "مجموعة من أفضل النصوص الأدبية العربية", SKU = "BOOK001", CategoryId = 6, IsActive = true },
+            new Product { Name = "لابتوب Dell", Slug = "dell-laptop", Price = 875000, Description = "لابتوب Dell للأعمال مع معالج قوي", SKU = "DELL001", CategoryId = 1, IsActive = true },
+            new Product { Name = "فستان نسائي أنيق", Slug = "elegant-dress", Price = 95000, Description = "فستان أنيق مناسب للمناسبات الخاصة", SKU = "DRESS001", CategoryId = 2, IsActive = true }
+        };
+        
+        dbContext.Products.AddRange(products);
+        dbContext.SaveChanges();
+    }
+}
 
 // تفعيل CORS
 app.UseCors("AllowFrontend");

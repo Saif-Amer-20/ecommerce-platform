@@ -2,8 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    appDir: true,
-    serverActions: true,
+    // Server Actions are now stable and enabled by default
   },
   i18n: {
     locales: ['ar', 'en'],

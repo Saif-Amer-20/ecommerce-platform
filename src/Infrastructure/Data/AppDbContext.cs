@@ -44,6 +44,8 @@ public class AppDbContext : DbContext
 
     // Core entities - from CoreEntities.cs
     public DbSet<Domain.Entities.Attribute> Attributes => Set<Domain.Entities.Attribute>();
+    public DbSet<AttributeValue> AttributeValues => Set<AttributeValue>();
+    public DbSet<ProductVariantAttribute> ProductVariantAttributes => Set<ProductVariantAttribute>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -53,6 +55,7 @@ public class AppDbContext : DbContext
         // Composite Keys
         modelBuilder.Entity<UserRole>().HasKey(ur => new { ur.UserId, ur.RoleId });
         modelBuilder.Entity<RolePermission>().HasKey(rp => new { rp.RoleId, rp.PermissionId });
+        modelBuilder.Entity<ProductVariantAttribute>().HasKey(pva => new { pva.ProductVariantId, pva.AttributeId, pva.AttributeValueId });
 
         // Basic Indexes
         modelBuilder.Entity<User>()
